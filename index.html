@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+	<title>Document</title>
+</head>
+<body>
+	
+	<div class="container-fluid">
+		<div class="row">
+			<button type="button" class="btn btn-dark w-25 col ms-2 me-1 my-1" id="but_w" onclick="but_click('west')">West</button>
+			<button type="button" class="btn btn-dark w-25 col ms-1 me-1 my-1" id="but_test" onclick="but_click()">test</button>
+			<button type="button" class="btn btn-dark w-25 col ms-1 me-2 my-1" id="but_e" onclick="but_click('east')">East</button>
+		</div>
+	</div>
+	<table id="table-east" class="table table-dark table-striped">
+		
+  	</table>
+
+		<!--
+  			<td>#</td>
+			<td>nikname</td>
+			<td>place1</td>
+			<td>place2</td>
+			<td>placeTotal</td>
+		
+
+	
+  	<script src=lib/js.js></script>-->
+  	<script>
+  		let resp1=false;
+let resp2=false;
+
+let list1 = {};
+let list2 = {};
+
+function load_res(id1="",id2=""){
+		var requestURL1 = "https://lichess.org/api/swiss/"+ id1 +"/results";
+		var requestURL2 = "https://lichess.org/api/swiss/"+ id2 +"/results";
+
+		
+
+		
+		//console.log(requestURL);
+
+
+		//forming request
+		var request1 = new XMLHttpRequest();
+		request1.open('GET', requestURL1);
+		request1.send();
+
+		//proccesing request
+		request1.onload = function(){
+			list1 =  NDJsonToObj(request1.response);
+			//console.log(list1);
+			resp1=true;
+			//summ(list1);
+		}
+
+		var request2 = new XMLHttpRequest();
+		request2.open('GET', requestURL2);
+		request2.send();
+
+		//proccesing request
+		request2.onload = function(){
+			list2 =  NDJsonToObj(request2.response);
+			//console.log(list2);
+			resp2=true;
+			//summ(list2);
+		}
+}
+		function NDJsonToObj (data=""){
+			var arr = data.split('\n');	
+			let out = {};
+			for (var j = 0; j <= arr.length - 1; j++){
+				var str = clearStr(arr[j]);
+				subArr=str.split(',');
+				let res = {}
+				for (var i = 0; i <= subArr.length - 1; i++) {
+					let buf = subArr[i].split(":");
+					let a = buf[0]
+					let b = buf[1]
+					if (a == "username"){
+						res[a]=b;
+					} else {
+						res[a]=b*1;
+					}
+				}
+				out[j]=res;		
+			}
+			return(out);
+		}
+
+		function clearStr(str=""){
+			str = str.replace('{','');
+			str = str.replace('}','');
+			str = str.replace(/['"]+/g, '');
+			return(str);
+		}
+
+		let total={}
+
+		function summ(){
+			let  res = {};
+
+			let elem = {};
+
+			for (key in list1){
+				if (list1[key].username){
+					res[key]={};
+					res[key].username = list1[key].username;
+					res[key].points   = list1[key].points;
+					res[key].places	  = list1[key].rank;
+					res[key].tieBreak = list1[key].tieBreak;
+
+					//console.log(res[key]);
+				};
+			}
+			let added = false;	
+
+			for (key_a in list2){
+				added = false;		
+				for (key_b in res){
+					if (list2[key_a].username == res[key_b].username){
+						res[key_b].points     = res[key_b].points   + list2[key_a].points;
+						res[key_b].places     = res[key_b].places   + list2[key_a].rank;
+						res[key_b].tieBreak   = res[key_b].tieBreak + list2[key_a].tieBreak;
+
+						//console.log(res[key_b]);
+						added = true;
+						break;
+					}
+				}
+				if (!added){
+					elem={}
+					elem.username = list2[key_a].username;
+					elem.points   = list2[key_a].points;
+					elem.places   = list2[key_a].rank;
+					elem.tieBreak = list2[key_a].tieBreak;
+
+					if (!!elem.username){res[Object.keys(res).length] = elem};
+				}
+			}
+
+		//	console.log("-----------",res)
+		//	console.log(Object.keys(res).length)
+			sort(res);
+			tabling();
+		}
+
+		function sort(list={}, arg1="points",arg2="tieBreak",arg3="places"){
+
+			let buf ={};
+			let n = Object.keys(list).length-1;
+
+			for (let j = 0; j<=n; j++) {
+				for (let i=0; i<=n-1; i++){
+					if (compare(list[n-i],list[n-i-1],arg1,arg2,arg3)){
+						buf = list[n-i];
+						list[n-i] = list[n-i-1];
+						list[n-i-1] = buf;
+
+						//console.log(list[n-i],"over",list[n-i-1])
+					}
+				}
+			}
+
+			function compare (elem1={},elem2={},arg1="points",arg2="tieBreak",arg3="places"){
+				if 		  (elem1[arg1] > elem2[arg1]) {
+					//console.log(arg1);
+					return(true)
+				} else if (elem1[arg1] == elem2[arg1] && elem1[arg2] > elem2[arg2]) {
+					//console.log(arg2);
+					return(true)
+				} else if (elem1[arg1] == elem2[arg1] && elem1[arg2] == elem2[arg2] && elem1[arg3] < elem2[arg3]) {
+					//console.log(arg3);
+					return(true)
+				} else {return(false)}
+			}
+
+			//console.log(list);
+			total=list;
+		}
+
+		//setTimeout(summ, 2000);
+
+		function tabling(){
+			let html ="<tr>	<th>#</th><th>username</th>	<th>points</th>	<th>tieBreak</th><th>places</th></tr>";
+			for (key in total){
+				let num=key*1+1;
+				html = html+"<tr> <th>"+num+"</th> <th>"+total[key].username+"</th> <th>"+total[key].points+"</th> <th>"+total[key].tieBreak+"</th> <th>"+total[key].places+"</th> </tr>"
+			}
+			document.querySelector("#table-east").innerHTML = html
+		}
+
+//document.querySelector("#but").onClick=function (){console.log(123)}
+function but_click(division="test"){
+
+	var id1 = "z8oo6Mg0";
+	var id2 = "LrrIfznU";
+
+	if (division == "east"){
+		id1 = "c5nwBVXh";
+		id2 = "TVLCXsKn";
+	} else if (division == "west"){
+		id1 = "x0SgA8kH";
+		id2 = "CeCXFL0F";
+	}
+
+	load_res(id1,id2);
+
+	let a = setInterval(function(){
+		if (resp1 && resp2){
+			summ();
+			//document.querySelector("#but").style.display="none";
+			clearInterval(a);
+		}
+	}, 500) 
+	//console.log(document.querySelector("#but").style.display);
+	console.log(division);
+}
+  	</script>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</body>
+</html>
